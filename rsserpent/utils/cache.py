@@ -11,10 +11,20 @@ from typing import (
     Dict,
     Optional,
     Tuple,
+    Type,
     TypeVar,
     Union,
     cast,
     overload,
+)
+
+from detacache import DetaCache  # type: ignore[import]
+from detacache.core._decorators import (  # type: ignore[import]
+    AsyncCache,
+    Coder,
+    DetaCoder,
+    DetaKeyGen,
+    KeyGen,
 )
 
 
@@ -23,6 +33,49 @@ __all__ = ("cached",)
 CACHE_EXPIRE = int(os.environ.get("CACHE_EXPIRE", 60 * 60))
 
 AsyncFn = TypeVar("AsyncFn", bound=Callable[..., Awaitable[Any]])
+
+
+class RSSSerpentDetaCache(DetaCache):  # type: ignore[misc]
+    """Extended DetaCache class to be compatible with cached()."""
+
+    def __init__(
+        self,
+        project_key: str = "",
+        project_id: str = "",
+        base_name: str = "rsserpent_cache",
+        key_gen: Type[KeyGen] = DetaKeyGen,
+        coder: Type[Coder] = DetaCoder,
+    ):
+        super().__init__(project_key, project_id, base_name, key_gen, coder)
+
+    def async_cache(  # type: ignore[no-untyped-def]
+        self,
+        fn: AsyncFn,
+        expire: int = 0,
+        key_gen: Optional[Type[KeyGen]] = None,
+        coder: Optional[Type[Coder]] = None,
+    ):
+        @wraps(fn)
+        async def async_wrapped_function(  # type: ignore[no-untyped-def]
+            *args: Tuple[Any, ...], **kwargs: Dict[str, Any]
+        ):
+            return await AsyncCache(
+                self._asyncDb,
+                expire,
+                fn,
+                args,
+                kwargs,
+                key_gen if key_gen else self.keyGen,
+                coder if coder else self.coder,
+            ).checkCached()
+
+        return async_wrapped_function
+
+
+DETA_PROJECT_KEY = os.getenv("DETA_PROJECT_KEY")
+detacache: Optional[RSSSerpentDetaCache]
+if DETA_PROJECT_KEY:
+    detacache = RSSSerpentDetaCache(DETA_PROJECT_KEY, base_name="rsserpent_cache")
 
 
 class CacheKey:
@@ -189,6 +242,10 @@ def cached(
 ) -> Union[AsyncFn, Callable[[AsyncFn], AsyncFn]]:
     """Cache function results."""
     if fn is not None:
+        if type(detacache) is RSSSerpentDetaCache:
+            return detacache.async_cache(  # type: ignore[no-any-return]
+                fn, expire=expire
+            )
         return decorator(fn, expire=expire, maxsize=maxsize)
     return partial(decorator, expire=expire, maxsize=maxsize)
 
