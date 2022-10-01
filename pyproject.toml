@@ -32,7 +32,6 @@ keywords = ["rss"]
 [tool.poetry.dependencies]
 python = "^3.7.0"
 arrow = "^1.1.1"
-fake-useragent = "^0.1.11"
 httpx = "^0.22.0"
 importlib-metadata = "^4.5.0"
 Jinja2 = "^3.0.1"
@@ -41,6 +40,7 @@ pydantic = {extras = ["email"], version = "^1.8.2"}
 pyquery = "^1.4.3"
 starlette = "^0.18.0"
 mike = "^1.1.2"
+fake-useragent-migs = "^0.1.11"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^2.15.0"

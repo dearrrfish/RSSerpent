@@ -36,5 +36,8 @@ class HTTPClient(httpx.AsyncClient):
         url = request.url
         request.headers.setdefault("Host", url.host)
         request.headers.setdefault("Referer", f"{url.scheme}://{url.host}")
-        request.headers.setdefault("User-Agent", ua.random)
+
+        if (request.headers["User-Agent"] or "python-httpx").startswith("python-httpx"):
+            request.headers.update({"User-Agent": ua.random})
+
         return request
