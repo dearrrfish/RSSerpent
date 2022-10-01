@@ -73,7 +73,7 @@ class RSSSerpentDetaCache(DetaCache):  # type: ignore[misc]
 
 
 DETA_PROJECT_KEY = os.getenv("DETA_PROJECT_KEY")
-detacache: Optional[RSSSerpentDetaCache]
+detacache: Optional[RSSSerpentDetaCache] = None
 if DETA_PROJECT_KEY:
     detacache = RSSSerpentDetaCache(DETA_PROJECT_KEY, base_name="rsserpent_cache")
 
