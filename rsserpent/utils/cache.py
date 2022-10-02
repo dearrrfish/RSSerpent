@@ -51,6 +51,7 @@ class RSSSerpentDetaCache(DetaCache):  # type: ignore[misc]
     def async_cache(  # type: ignore[no-untyped-def]
         self,
         fn: AsyncFn,
+        *,
         expire: int = 0,
         key_gen: Optional[Type[KeyGen]] = None,
         coder: Optional[Type[Coder]] = None,
@@ -241,13 +242,18 @@ def cached(
     fn: Optional[AsyncFn] = None, *, expire: int = CACHE_EXPIRE, maxsize: int = 0
 ) -> Union[AsyncFn, Callable[[AsyncFn], AsyncFn]]:
     """Cache function results."""
-    if fn is not None:
-        if type(detacache) is RSSSerpentDetaCache:
-            return detacache.async_cache(  # type: ignore[no-any-return]
-                fn, expire=expire
-            )
-        return decorator(fn, expire=expire, maxsize=maxsize)
-    return partial(decorator, expire=expire, maxsize=maxsize)
+    decor = None
+    if type(detacache) is RSSSerpentDetaCache:
+        if fn is not None:
+            decor = detacache.async_cache(fn, expire=expire)
+        else:
+            decor = partial(detacache.async_cache, expire=expire)
+    else:
+        if fn is not None:
+            decor = decorator(fn, expire=expire, maxsize=maxsize)
+        else:
+            decor = partial(decorator, expire=expire, maxsize=maxsize)
+    return decor  # type: ignore[no-any-return]
 
 
 def get_cache(fn: AsyncFn) -> Optional[LRUCache]:
