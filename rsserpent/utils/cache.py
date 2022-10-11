@@ -11,7 +11,6 @@ from typing import (
     Dict,
     Optional,
     Tuple,
-    Type,
     TypeVar,
     Union,
     cast,
@@ -19,13 +18,6 @@ from typing import (
 )
 
 from detacache import DetaCache  # type: ignore[import]
-from detacache.core._decorators import (  # type: ignore[import]
-    AsyncCache,
-    Coder,
-    DetaCoder,
-    DetaKeyGen,
-    KeyGen,
-)
 
 
 __all__ = ("cached",)
@@ -43,32 +35,33 @@ class RSSSerpentDetaCache(DetaCache):  # type: ignore[misc]
         project_key: str = "",
         project_id: str = "",
         base_name: str = "rsserpent_cache",
-        key_gen: Type[KeyGen] = DetaKeyGen,
-        coder: Type[Coder] = DetaCoder,
     ):
-        super().__init__(project_key, project_id, base_name, key_gen, coder)
+        super().__init__(project_key, project_id, base_name)
 
     def async_cache(  # type: ignore[no-untyped-def]
         self,
         fn: AsyncFn,
         *,
         expire: int = 0,
-        key_gen: Optional[Type[KeyGen]] = None,
-        coder: Optional[Type[Coder]] = None,
     ):
+        key = self.key
+        coder = self.coder
+
         @wraps(fn)
         async def async_wrapped_function(  # type: ignore[no-untyped-def]
             *args: Tuple[Any, ...], **kwargs: Dict[str, Any]
         ):
-            return await AsyncCache(
-                self._asyncDb,
-                expire,
-                fn,
-                args,
-                kwargs,
-                key_gen if key_gen else self.keyGen,
-                coder if coder else self.coder,
-            ).checkCached()
+            _key = key.generate(fn, args, kwargs)
+            cached = await self._asyncDb.get(key.generate(fn, args, kwargs))
+
+            if not cached:
+                fn_resp = await fn(*args, **kwargs)
+                await self._asyncDb.put(
+                    self.putDataInBase(fn_resp, coder, expire), _key
+                )
+                return fn_resp
+
+            return coder.decode(cached)
 
         return async_wrapped_function
 
